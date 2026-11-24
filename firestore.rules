@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isMember() {
+      return signedIn() && exists(
+        /databases/$(database)/documents/businesses/rangpur-marble-granite/members/$(request.auth.uid)
+      );
+    }
+    // Each partner can read only their own membership record.
+    // Membership records are created/changed manually by the project administrator.
+    match /businesses/rangpur-marble-granite/members/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update, delete: if false;
+    }
+    // Future app data must live under this workspace path.
+    match /businesses/rangpur-marble-granite/workspace/{document=**} {
+      allow read, write: if isMember();
+    }
+  }
+}
